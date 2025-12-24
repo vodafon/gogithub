@@ -51,3 +51,17 @@ func (obj *Client) parseCompare(res []byte) (*CompareResponse, error) {
 
 	return &response, nil
 }
+
+func (obj *Client) GetCompareDiff(u string) (string, error) {
+	com, err := obj.GetCompare(u)
+	if err != nil {
+		return "", err
+	}
+
+	diff := ""
+	for _, f := range com.Files {
+		diff += f.Patch + "\n"
+	}
+
+	return diff, nil
+}
