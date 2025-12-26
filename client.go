@@ -44,6 +44,38 @@ func NewClientWithTokens(tokens []string) (*Client, error) {
 	return client, nil
 }
 
+func IsTokenValid(token string) (bool, error) {
+	httpclient := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	// The /user endpoint is the standard way to check "Who am I?"
+	// It returns 200 OK if the token is valid, and 401 Unauthorized if not.
+	req, err := http.NewRequest("GET", "https://api.github.com/user", nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// GitHub requires a User-Agent header; requests without it are often rejected.
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := httpclient.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("network error during validation: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// 200 OK means the token is valid.
+	if resp.StatusCode == http.StatusOK {
+		return true, nil
+	}
+
+	// 401 Unauthorized or 403 Forbidden usually means the token is invalid or expired.
+	// We treat any non-200 status as an invalid token for this boolean check.
+	return false, nil
+}
+
 func (obj *Client) chooseToken() string {
 	randomIndex := rand.Intn(len(obj.authTokens))
 	return obj.authTokens[randomIndex]
